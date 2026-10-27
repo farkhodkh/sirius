@@ -28,7 +28,6 @@ services:
       timeout: 3s
       retries: 10
     networks: [backend]
-
   redis:
     image: redis:7-alpine
     container_name: sirius-redis
@@ -44,7 +43,32 @@ services:
     networks: [backend]
     ports:
       - "127.0.0.1:6379:6379"     # только localhost сервера, наружу не виден
+  mailpit:
+    image: axllent/mailpit:latest        # в боевом стеке зафиксируйте конкретный тег
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:1025:1025"            # SMTP: сюда пишут сервисы
+      - "127.0.0.1:8025:8025"            # веб-интерфейс: смотреть письма
+    networks: [backend]
+  rabbitmq:
+    image: rabbitmq:4-management          # management - веб-интерфейс на порту 15672
+    container_name: sirius-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBIT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD}
+    ports:
+      - "127.0.0.1:5672:5672"             # AMQP: сюда подключаются сервисы
+      - "127.0.0.1:15672:15672"           # веб-интерфейс (на Mac - через SSH-туннель)
+    volumes:
+      - rabbitdata:/var/lib/rabbitmq      # очереди и сообщения переживают перезапуск контейнера
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      retries: 10
+    networks: [backend]
 volumes:
   pgdata:
+  rabbitdata:
 networks:
   backend:

@@ -1,7 +1,2 @@
 databaseChangeLog:
-  - changeSet:
-      id: 000-init
-      author: farhod
-      changes:
-        - tagDatabase:
-            tag: init
+  - include: { file: db/changelog/changes/001-users.sql }

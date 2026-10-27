@@ -28,6 +28,9 @@ spring:
         default_schema: app
         generate_statistics: false    # включайте на время отладки, чтобы видеть число запросов
 sirius:
+  auth:
+    issuer: ${SIRIUS_AUTH_ISSUER:http://localhost:9000}
+    jwks-uri: ${SIRIUS_AUTH_JWKS_URI:http://localhost:9000/oauth2/jwks}
   dev:
     jwt-secret: ${SIRIUS_DEV_JWT_SECRET:}     # секрет подписи тестовых токенов (профиль dev); не короче 32 символов
   outbox:
