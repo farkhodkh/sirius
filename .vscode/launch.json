@@ -1,0 +1,47 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "order-service",
+      "request": "launch",
+      "mainClass": "world.sirius.order.OrderServiceApplication",
+      "projectName": "order-service",
+      "envFile": "${workspaceFolder}/services/order-service/.env.local",
+      "env": { "SERVER_PORT": "8081" }
+    },
+    {
+      "type": "java",
+      "name": "auth-service",
+      "request": "launch",
+      "mainClass": "world.sirius.auth.AuthServiceApplication",
+      "projectName": "auth-service",
+      "envFile": "${workspaceFolder}/services/auth-service/.env.local",
+      "env": { "SERVER_PORT": "9000" }
+    },
+    {
+      "type": "java",
+      "name": "notification-service",
+      "request": "launch",
+      "mainClass": "world.sirius.notification.NotificationServiceApplication",
+      "projectName": "notification-service",
+      "envFile": "${workspaceFolder}/services/notification-service/.env.local",
+      "env": { "SERVER_PORT": "8082" }
+    },
+    {
+      "type": "java",
+      "name": "ops-service",
+      "request": "launch",
+      "mainClass": "world.sirius.ops.OpsServiceApplication",
+      "projectName": "ops-service",
+      "envFile": "${workspaceFolder}/services/ops-service/.env.local",
+      "env": { "SERVER_PORT": "8083" }
+    }
+  ],
+   "compounds": [
+      {
+        "name": "order + auth",
+        "configurations": ["auth-service", "order-service"]
+      }
+    ]
+}

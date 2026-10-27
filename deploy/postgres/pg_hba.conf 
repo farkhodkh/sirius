@@ -1,0 +1,8 @@
+# TYPE  DATABASE  USER  ADDRESS        METHOD
+local   all       postgres              peer          # суперпользователь — только локально внутри контейнера (по имени ОС-пользователя)
+local   all       all                   scram-sha-256 # остальные роли через unix-сокет (нужно для docker exec ... psql) — по паролю
+host    all       all   127.0.0.1/32    scram-sha-256
+host    all       all   172.16.0.0/12   scram-sha-256 # внутренние сети Docker (bridge по умолчанию)
+host    all       all   192.168.0.0/16  scram-sha-256 # Docker берёт 192.168.x.x, когда 172.x закончились
+host    all       all   10.0.0.0/8      scram-sha-256 # overlay-сети Swarm (глава 10)
+host    all       all   0.0.0.0/0       reject        # всё остальное — запрещено

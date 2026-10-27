@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:17                # фиксируйте мажорную (и лучше минорную) версию
+    container_name: sirius-postgres
+    restart: unless-stopped           # поднимать после перезагрузки, если не остановлен вручную
+    command: ["postgres",
+              "-c", "config_file=/etc/postgresql/postgresql.conf",
+              "-c", "hba_file=/etc/postgresql/pg_hba.conf"]   # использовать НАШИ конфиги
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD}
+      AUTH_MIGRATOR_PASSWORD: ${AUTH_MIGRATOR_PASSWORD}
+      AUTH_APP_PASSWORD: ${AUTH_APP_PASSWORD}
+      ORDER_MIGRATOR_PASSWORD: ${ORDER_MIGRATOR_PASSWORD}
+      ORDER_APP_PASSWORD: ${ORDER_APP_PASSWORD}
+      NOTIF_MIGRATOR_PASSWORD: ${NOTIF_MIGRATOR_PASSWORD}
+      NOTIF_APP_PASSWORD: ${NOTIF_APP_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data                            # данные переживают пересоздание контейнера
+      - ../postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ../postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      - ../postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:5432:5432"         # только localhost хоста: для DBeaver через SSH-туннель, но не наружу
+    healthcheck:                      # другие сервисы ждут готовности через depends_on: condition: service_healthy
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [backend]
+
+  redis:
+    image: redis:7-alpine
+    container_name: sirius-redis
+    restart: unless-stopped
+    command: ["redis-server", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru", "--requirepass", "${REDIS_PASSWORD}"]
+    # maxmemory + LRU: при нехватке памяти вытеснять давно неиспользуемые ключи - поведение настоящего кэша
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG"]   # $$ - чтобы Compose не подставил переменную, а оставил её контейнеру
+      interval: 5s
+      retries: 10
+    networks: [backend]
+    ports:
+      - "127.0.0.1:6379:6379"     # только localhost сервера, наружу не виден
+volumes:
+  pgdata:
+networks:
+  backend:

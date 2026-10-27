@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - changeSet:
+      id: 000-init
+      author: farhod
+      changes:
+        - tagDatabase:
+            tag: init

@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-outbox
+      author: farhod
+      changes:
+        - createTable:
+            tableName: outbox_events
+            columns:
+              - column: { name: id,             type: uuid,        constraints: { primaryKey: true, nullable: false } }
+              - column: { name: aggregate_type, type: varchar(50), constraints: { nullable: false } }
+              - column: { name: aggregate_id,   type: uuid,        constraints: { nullable: false } }
+              - column: { name: event_type,     type: varchar(100),constraints: { nullable: false } }
+              - column: { name: payload,        type: jsonb,       constraints: { nullable: false } }
+              - column: { name: created_at,     type: timestamptz, defaultValueComputed: now(), constraints: { nullable: false } }
+              - column: { name: published_at,   type: timestamptz }
+        # ЧАСТИЧНЫЙ индекс: содержит только НЕотправленные строки → маленький и быстрый, даже если таблица огромна
+        - sql: { sql: "CREATE INDEX idx_outbox_unpublished ON app.outbox_events (created_at) WHERE published_at IS NULL" }

@@ -1,0 +1,15 @@
+{
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.jdt.ls.java.home": "/home/dev/.sdkman/candidates/java/current",
+  "java.configuration.runtimes": [
+    { "name": "JavaSE-21", "path": "/home/dev/.sdkman/candidates/java/current", "default": true }
+  ],
+  "maven.executable.path": "/home/dev/.sdkman/candidates/maven/current/bin/mvn",
+  "java.jdt.ls.vmargs": "-Xmx1G",
+  "java.import.maven.enabled": true,
+  "files.watcherExclude": {
+    "**/target/**": true
+  },
+  "maven.view": "flat",
+  "java.configuration.updateBuildConfiguration": "interactive"
+}

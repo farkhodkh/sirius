@@ -1,0 +1,29 @@
+server:
+  port: 8081                          # порт API
+spring:
+  application:
+    name: order-service               # имя попадёт в метрики, трейсы, логи
+  datasource:                         # РАНТАЙМ-подключение: роль order_app (только DML)
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/orders_db}
+    username: ${DB_USER:order_app}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 10
+      pool-name: orders-pool
+  liquibase:                          # МИГРАЦИИ идут под другой ролью: order_migrator (DDL)
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/orders_db}
+    user: ${DB_MIGRATOR_USER:order_migrator}
+    password: ${DB_MIGRATOR_PASSWORD}
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    default-schema: app
+  jpa:
+    open-in-view: false               # ВАЖНО: выключаем OSIV, иначе соединение держится на весь HTTP-запрос и «ленивая» загрузка маскирует N+1
+    hibernate:
+      ddl-auto: validate              # Hibernate только СВЕРЯЕТ схему с сущностями, ничего не меняет
+    properties:
+      hibernate:
+        jdbc.batch_size: 50           # группировать INSERT/UPDATE в батчи
+        order_inserts: true
+        order_updates: true
+        default_schema: app
+        generate_statistics: false    # включайте на время отладки, чтобы видеть число запросов

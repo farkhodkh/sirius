@@ -1,0 +1,28 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-orders
+      author: farhod
+      changes:
+        - createTable:
+            tableName: orders
+            columns:
+              - column: { name: id,              type: uuid,           constraints: { primaryKey: true, nullable: false } }
+              - column: { name: customer_id,     type: uuid,           constraints: { nullable: false } }   # sub из JWT
+              - column: { name: customer_email,  type: varchar(320),   constraints: { nullable: false } }   # 320 — максимум длины e-mail по RFC
+              - column: { name: status,          type: varchar(20),    constraints: { nullable: false } }
+              - column: { name: total_amount,    type: "numeric(12,2)",  constraints: { nullable: false } }   # деньги — НИКОГДА float/double
+              - column: { name: currency,        type: char(3),        constraints: { nullable: false } }
+              - column: { name: idempotency_key, type: varchar(64),    constraints: { nullable: false } }
+              - column: { name: version,         type: bigint,         defaultValueNumeric: 0, constraints: { nullable: false } }  # оптимистичная блокировка
+              - column: { name: created_at,      type: timestamptz,    defaultValueComputed: now(), constraints: { nullable: false } }
+        - createTable:
+            tableName: order_items
+            columns:
+              - column: { name: id,         type: uuid,          constraints: { primaryKey: true, nullable: false } }
+              - column: { name: order_id,   type: uuid,          constraints: { nullable: false, foreignKeyName: fk_items_order, references: app.orders(id) } }
+              - column: { name: sku,        type: varchar(64),   constraints: { nullable: false } }
+              - column: { name: name,       type: varchar(255),  constraints: { nullable: false } }
+              - column: { name: quantity,   type: int,           constraints: { nullable: false } }
+              - column: { name: unit_price, type: "numeric(12,2)", constraints: { nullable: false } }
+        - sql: { sql: "ALTER TABLE app.orders ADD CONSTRAINT chk_orders_total CHECK (total_amount >= 0)" }  # инвариант на уровне БД
+        - sql: { sql: "ALTER TABLE app.order_items ADD CONSTRAINT chk_items_qty CHECK (quantity > 0)" }
