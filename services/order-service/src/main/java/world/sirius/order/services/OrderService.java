@@ -27,32 +27,25 @@ public class OrderService {
         this.json = json;
     }
 
-    // readOnly=true: Hibernate не делает dirty checking, драйвер может использовать
-    // read-only режим → быстрее и безопаснее
+    // readOnly=true: Hibernate не делает dirty checking, драйвер может использовать read-only режим → быстрее и безопаснее
     @Transactional(readOnly = true)
-    public Page<Order> list(UUID customerId, Pageable p) {
-        return orders.findByCustomerId(customerId, p);
-    }
+    public Page<Order> list(UUID customerId, Pageable p) { return orders.findByCustomerId(customerId, p); }
 
-    // Одна транзакция = атомарно: заказ + строка outbox. Либо обе записи, либо ни
-    // одной.
+    // Одна транзакция = атомарно: заказ + строка outbox. Либо обе записи, либо ни одной.
     @Transactional
     public Order create(UUID customerId, String email, CreateOrderCommand cmd, String idemKey) {
-        // 1) идемпотентность: повтор запроса (сеть мобильная, клиент ретраит!) вернёт
-        // тот же заказ
+        // 1) идемпотентность: повтор запроса (сеть мобильная, клиент ретраит!) вернёт тот же заказ
         var existing = orders.findByCustomerIdAndIdempotencyKey(customerId, idemKey);
-        if (existing.isPresent())
-            return existing.get();
+        if (existing.isPresent()) return existing.get();
 
         Order order = Order.create(customerId, email, cmd.currency(), idemKey, cmd.toItems());
         try {
-            orders.saveAndFlush(order); // flush сразу: нарушение UNIQUE узнаем здесь, а не при коммите
+            orders.saveAndFlush(order);               // flush сразу: нарушение UNIQUE узнаем здесь, а не при коммите
         } catch (DataIntegrityViolationException race) {
-            // два одинаковых запроса пришли одновременно: проиграл гонку → читаем
-            // победителя
+            // два одинаковых запроса пришли одновременно: проиграл гонку → читаем победителя
             return orders.findByCustomerIdAndIdempotencyKey(customerId, idemKey).orElseThrow(() -> race);
         }
-        outbox.save(OutboxEvent.orderCreated(order, json)); // в ТОЙ ЖЕ транзакции
+        outbox.save(OutboxEvent.orderCreated(order, json));   // в ТОЙ ЖЕ транзакции
         return order;
     }
 }

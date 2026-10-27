@@ -1,4 +1,4 @@
-package world.sirius.order.component;
+package world.sirius.order.messaging;
 
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -12,8 +12,8 @@ import world.sirius.order.repository.OutboxRepository;
 public class OutboxPublisher {
     private final OutboxRepository repo;
     private final RabbitTemplate rabbit;
-    
-    
+    // ...конструктор
+
     public OutboxPublisher() {
         this.repo = null;
         this.rabbit = new RabbitTemplate();

@@ -3,8 +3,8 @@ package world.sirius.order.services;
 import java.math.BigDecimal;
 import java.util.List;
 
-import world.sirius.order.domain.CreateOrderRequest;
 import world.sirius.order.domain.OrderItem;
+import world.sirius.order.web.CreateOrderRequest;
 
 /** Входные данные для создания заказа: не зависит от формата HTTP-запроса. */
 public record CreateOrderCommand(String currency, List<Item> items) {

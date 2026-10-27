@@ -1,4 +1,4 @@
-package world.sirius.order.domain;
+package world.sirius.order.web;
 
 import java.math.BigDecimal;
 import java.time.Instant;
