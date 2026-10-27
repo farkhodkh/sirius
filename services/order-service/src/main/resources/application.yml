@@ -27,3 +27,9 @@ spring:
         order_updates: true
         default_schema: app
         generate_statistics: false    # включайте на время отладки, чтобы видеть число запросов
+sirius:
+  dev:
+    jwt-secret: ${SIRIUS_DEV_JWT_SECRET:}     # секрет подписи тестовых токенов (профиль dev); не короче 32 символов
+  outbox:
+    publisher:
+      enabled: false                          # публикатор outbox включим в главе 8, когда появится RabbitMQ

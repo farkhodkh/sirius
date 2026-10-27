@@ -17,6 +17,8 @@ public class OrderItem {
     private int quantity;
     @Column(name = "unit_price") private java.math.BigDecimal unitPrice;
 
+    protected OrderItem() {}
+    
     public OrderItem(String sku, String name, int quantity, BigDecimal unitPrice) {
         this.sku = sku;
         this.name = name;
