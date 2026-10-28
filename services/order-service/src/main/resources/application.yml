@@ -36,6 +36,11 @@ spring:
         order_updates: true
         default_schema: app
         generate_statistics: false    # включайте на время отладки, чтобы видеть число запросов
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      password: ${REDIS_PASSWORD:}
+      timeout: 500ms
 sirius:
   auth:
     issuer: ${SIRIUS_AUTH_ISSUER:http://localhost:9000}
