@@ -1,0 +1,52 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: notification-service
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/notif_db}
+    username: ${DB_USER:notif_app}
+    password: ${DB_PASSWORD}
+  liquibase:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/notif_db}
+    user: ${DB_MIGRATOR_USER:notif_migrator}
+    password: ${DB_MIGRATOR_PASSWORD}
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    default-schema: app
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: app
+  rabbitmq:
+    host: ${RABBIT_HOST:localhost}
+    port: ${RABBIT_PORT:5672}
+    username: ${RABBIT_USER}
+    password: ${RABBIT_PASSWORD}
+    listener:
+      simple:
+        acknowledge-mode: auto            # подтверждение (ack) после успешного возврата из слушателя
+        prefetch: 10                      # сколько сообщений потребитель держит без подтверждения
+        default-requeue-rejected: false   # отвергнутое сообщение НЕ возвращать в очередь, а отправить в DLQ
+        retry:
+          enabled: true
+          initial-interval: 1s
+          multiplier: 2.0                 # паузы: 1с, 2с, 4с
+          max-interval: 10s
+          max-retries: 3                  # 3 повтора = 4 попытки всего; после них - в DLQ
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+
+sirius:
+  notification:
+    mail-from: no-reply@sirius.local
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus

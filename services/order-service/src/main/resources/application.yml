@@ -16,6 +16,15 @@ spring:
     password: ${DB_MIGRATOR_PASSWORD}
     change-log: classpath:db/changelog/db.changelog-master.yaml
     default-schema: app
+  rabbitmq:
+    host: ${RABBIT_HOST:localhost}
+    port: ${RABBIT_PORT:5672}
+    username: ${RABBIT_USER:}
+    password: ${RABBIT_PASSWORD:}
+    publisher-confirm-type: correlated    # брокер подтверждает каждое сообщение отдельно (CorrelationData)
+    publisher-returns: true               # брокер возвращает сообщения, не попавшие ни в одну очередь
+    template:
+      mandatory: true                     # без этого брокер молча отбрасывает «unroutable» сообщения
   jpa:
     open-in-view: false               # ВАЖНО: выключаем OSIV, иначе соединение держится на весь HTTP-запрос и «ленивая» загрузка маскирует N+1
     hibernate:

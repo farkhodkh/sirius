@@ -1,6 +1,6 @@
 package world.sirius.order.domain;
 
-import java.sql.Date;
+import java.util.Date;
 import java.time.Instant;
 import java.util.UUID;
 
