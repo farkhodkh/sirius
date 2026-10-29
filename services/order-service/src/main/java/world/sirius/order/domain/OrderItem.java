@@ -5,9 +5,15 @@ import java.util.UUID;
 
 import jakarta.persistence.*;
 
+/**
+ * OrderItem - Единиза заказа
+ */
 @Entity
 @Table(name = "order_items")
 public class OrderItem {
+    /*
+     * Уникальный идентификатор единицы 
+     */
     @Id private UUID id = UUID.randomUUID();
     @ManyToOne(fetch = FetchType.LAZY, optional = false)   // ManyToOne по умолчанию EAGER — переключаем на LAZY явно
     @JoinColumn(name = "order_id")

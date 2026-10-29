@@ -1,0 +1,130 @@
+# Приложения Сириуса. Запускается ВМЕСТЕ с docker-compose.data.yml:
+#   docker compose -f docker-compose.data.yml -f docker-compose.apps.yml up -d --build
+# Оба файла образуют один проект Compose: общая сеть backend, сервисы видят друг друга по имени (postgres, redis, rabbitmq, mailpit).
+
+x-java-service: &java-service          # общие настройки Java-сервисов (YAML-якорь)
+  restart: unless-stopped
+  networks: [backend]
+  environment: &java-env
+    MANAGEMENT_SERVER_PORT: "9091"     # Actuator на отдельном порту: он не публикуется наружу, им пользуются healthcheck и мониторинг
+
+services:
+  auth-service:
+    <<: *java-service
+    image: sirius/auth-service:0.1.0
+    build:
+      context: ../..                                  # корень репозитория (compose-файл лежит в deploy/compose)
+      dockerfile: deploy/docker/Dockerfile
+      args: { SERVICE: auth-service }
+    environment:
+      <<: *java-env
+      DB_URL: jdbc:postgresql://postgres:5432/auth_db
+      DB_USER: auth_app
+      DB_PASSWORD: ${AUTH_APP_PASSWORD}
+      DB_MIGRATOR_USER: auth_migrator
+      DB_MIGRATOR_PASSWORD: ${AUTH_MIGRATOR_PASSWORD}
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SIRIUS_AUTH_ISSUER: ${SIRIUS_AUTH_ISSUER:-http://localhost:9000}
+      SIRIUS_AUTH_PUBLIC_URL: ${SIRIUS_AUTH_PUBLIC_URL:-http://localhost:9000}
+    ports: ["127.0.0.1:9000:9000"]                    # до появления Traefik (глава 10)
+    depends_on:
+      postgres: { condition: service_healthy }        # не стартовать, пока БД не готова
+      mailpit:  { condition: service_started }
+    deploy:
+      resources: { limits: { memory: 512M, cpus: "1.0" } }
+
+  order-service:
+    <<: *java-service
+    image: sirius/order-service:0.1.0
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args: { SERVICE: order-service }
+    environment:
+      <<: *java-env
+      DB_URL: jdbc:postgresql://postgres:5432/orders_db
+      DB_USER: order_app
+      DB_PASSWORD: ${ORDER_APP_PASSWORD}
+      DB_MIGRATOR_USER: order_migrator
+      DB_MIGRATOR_PASSWORD: ${ORDER_MIGRATOR_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      RABBIT_HOST: rabbitmq
+      RABBIT_USER: ${RABBIT_USER}
+      RABBIT_PASSWORD: ${RABBIT_PASSWORD}
+      SIRIUS_OUTBOX_PUBLISHER_ENABLED: "true"
+      SIRIUS_AUTH_ISSUER: ${SIRIUS_AUTH_ISSUER:-http://localhost:9000}   # iss в токене (внешний адрес)
+      SIRIUS_AUTH_JWKS_URI: http://auth-service:9000/oauth2/jwks         # ключи берём по ВНУТРЕННЕМУ адресу
+    ports: ["127.0.0.1:8081:8081"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    deploy:
+      resources: { limits: { memory: 512M, cpus: "1.0" } }
+
+  notification-service:
+    <<: *java-service
+    image: sirius/notification-service:0.1.0
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args: { SERVICE: notification-service }
+    environment:
+      <<: *java-env
+      DB_URL: jdbc:postgresql://postgres:5432/notif_db
+      DB_USER: notif_app
+      DB_PASSWORD: ${NOTIF_APP_PASSWORD}
+      DB_MIGRATOR_USER: notif_migrator
+      DB_MIGRATOR_PASSWORD: ${NOTIF_MIGRATOR_PASSWORD}
+      RABBIT_HOST: rabbitmq
+      RABBIT_USER: ${RABBIT_USER}
+      RABBIT_PASSWORD: ${RABBIT_PASSWORD}
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+    ports: ["127.0.0.1:8082:8082"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      mailpit:  { condition: service_started }
+    deploy:
+      resources: { limits: { memory: 512M, cpus: "1.0" } }
+
+  ops-service:
+    <<: *java-service
+    image: sirius/ops-service:0.1.0
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args: { SERVICE: ops-service }
+    networks: [backend, ops]                          # + сеть до прокси Docker (переопределяет networks из якоря)
+    environment:
+      <<: *java-env
+      SIRIUS_DOCKER_HOST: tcp://docker-proxy:2375
+      SIRIUS_DOCKER_PROJECT: ${COMPOSE_PROJECT_NAME:-compose}   # значение метки com.docker.compose.project наших контейнеров
+      SIRIUS_AUTH_ISSUER: ${SIRIUS_AUTH_ISSUER:-http://localhost:9000}
+      SIRIUS_AUTH_JWKS_URI: http://auth-service:9000/oauth2/jwks
+    ports: ["127.0.0.1:8083:8083"]
+    depends_on:
+      docker-proxy: { condition: service_started }
+    deploy:
+      resources: { limits: { memory: 384M, cpus: "0.5" } }
+
+  docker-proxy:                                        # пропускает к Docker только РАЗРЕШЁННЫЕ вызовы API
+    image: tecnativa/docker-socket-proxy
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1                                    # разрешить чтение /containers (список, inspect, логи)
+      POST: 1                                          # без него запрещено всё, кроме GET (включая перезапуск)
+      # ALLOW_RESTARTS: 1                                # разрешить перезапуск контейнеров; создание и удаление остаются запрещёнными
+      IMAGES: 0
+      NETWORKS: 0
+      VOLUMES: 0
+      EXEC: 0
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock:ro"]
+    networks: [ops]                                    # доступен ТОЛЬКО ops-service
+
+networks:
+  ops:                                                 # изолированная сеть: ops-service <-> docker-proxy
+    internal: true                                     # без выхода в интернет

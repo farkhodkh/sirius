@@ -1,0 +1,12 @@
+# Что НЕ попадает в контекст сборки образа (быстрее сборка, нет секретов в образе)
+.git
+.gitignore
+**/target
+**/.env
+**/.env.local
+**/.vscode
+**/.idea
+**/*.log
+**/*.iml
+deploy/compose/.env
+deploy/postgres/data

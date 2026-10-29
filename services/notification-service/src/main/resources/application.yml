@@ -44,8 +44,11 @@ spring:
 sirius:
   notification:
     mail-from: no-reply@sirius.local
-
 management:
+  endpoint:                  # <- новое
+    health:                  # <- новое
+      probes:                # <- новое
+        enabled: true        # <- новое
   endpoints:
     web:
       exposure:

@@ -1,0 +1,24 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: ops-service
+
+sirius:
+  docker:
+    host: ${SIRIUS_DOCKER_HOST:unix:///var/run/docker.sock}
+    project: ${SIRIUS_DOCKER_PROJECT:sirius}
+  auth:
+    issuer: ${SIRIUS_AUTH_ISSUER:http://localhost:9000}
+    jwks-uri: ${SIRIUS_AUTH_JWKS_URI:http://localhost:9000/oauth2/jwks}
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true                  # включить /actuator/health/liveness и /actuator/health/readiness
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus

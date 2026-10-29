@@ -27,3 +27,11 @@ spring:
         order_updates: true
         default_schema: app
         generate_statistics: false    # включайте на время отладки, чтобы видеть число запросов
+management:
+  endpoints:
+    # web:
+    #   exposure:
+    #     include: health,info,prometheus
+    health:
+      probes:
+        enabled: true

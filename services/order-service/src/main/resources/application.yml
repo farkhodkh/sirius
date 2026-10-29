@@ -50,3 +50,12 @@ sirius:
   outbox:
     publisher:
       enabled: false                          # публикатор outbox включим в главе 8, когда появится RabbitMQ
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
