@@ -1,0 +1,15 @@
+# Мост между Compose и Swarm: контейнеры данных подключаются к общей overlay-сети sirius_shared,
+# чтобы приложения из Swarm находили их по именам (postgres, redis, rabbitmq, mailpit).
+# Сеть создаётся один раз:  docker network create --driver overlay --attachable sirius_shared
+#   export COMPOSE_FILE=docker-compose.data.yml:docker-compose.swarm-bridge.yml
+
+services:
+  postgres: { networks: [backend, shared] }
+  redis:    { networks: [backend, shared] }
+  rabbitmq: { networks: [backend, shared] }
+  mailpit:  { networks: [backend, shared] }
+
+networks:
+  shared:
+    external: true
+    name: sirius_shared

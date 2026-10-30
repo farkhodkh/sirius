@@ -1,0 +1,93 @@
+# Входной шлюз Сириуса (Traefik). Запускается вместе с data и apps:
+#   export COMPOSE_FILE=docker-compose.data.yml:docker-compose.apps.yml:docker-compose.edge.yml
+# Метки (labels) ниже ДОБАВЛЯЮТСЯ к уже описанным сервисам: Compose объединяет файлы по именам сервисов.
+# Домен задаётся переменной SIRIUS_DOMAIN в .env (по умолчанию sirius.test).
+
+services:
+  docker-socket-ro:                                    # прокси к Docker ТОЛЬКО ДЛЯ ЧТЕНИЯ: Traefik нужно лишь узнавать о контейнерах
+    image: tecnativa/docker-socket-proxy
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1                                    # список и описание контейнеров
+      NETWORKS: 1
+      INFO: 1
+      POST: 0                                          # любые изменяющие запросы запрещены
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock:ro"]
+    networks: [socket]                                 # доступен ТОЛЬКО Traefik
+
+  traefik:
+    image: traefik:v3.7                                # держите конкретную версию, не latest
+    restart: unless-stopped
+    ports:                                             # ЕДИНСТВЕННЫЕ порты стенда, доступные из сети
+      - "${SIRIUS_BIND_IP:-127.0.0.1}:80:80"           # привязка к конкретному адресу: Docker обходит правила ufw (см. 10.2)
+      - "${SIRIUS_BIND_IP:-127.0.0.1}:443:443"         # SIRIUS_BIND_IP - адрес сервера в локальной сети, задаётся в .env
+    volumes:
+      - ../traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ../traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - ../traefik/certs:/certs:ro
+    networks: [backend, socket]                        # backend: доступ к сервисам; socket: доступ к прокси Docker
+    depends_on:
+      docker-socket-ro: { condition: service_started }
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.dashboard.rule=Host(`traefik.${SIRIUS_DOMAIN:-sirius.test}`)
+      - traefik.http.routers.dashboard.entrypoints=websecure
+      - traefik.http.routers.dashboard.tls=true
+      - traefik.http.routers.dashboard.service=api@internal
+      - traefik.http.routers.dashboard.middlewares=admin-auth@file
+
+  order-service:
+    environment:
+      SERVER_FORWARD_HEADERS_STRATEGY: framework       # учитывать заголовки X-Forwarded-* от Traefik
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.orders.rule=Host(`api.${SIRIUS_DOMAIN:-sirius.test}`) && PathPrefix(`/api/v1/orders`)
+      - traefik.http.routers.orders.entrypoints=websecure
+      - traefik.http.routers.orders.tls=true
+      - traefik.http.routers.orders.middlewares=ratelimit-api@file,secure-headers@file
+      - traefik.http.services.orders.loadbalancer.server.port=8081
+
+  auth-service:
+    environment:
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.auth.rule=Host(`auth.${SIRIUS_DOMAIN:-sirius.test}`)
+      - traefik.http.routers.auth.entrypoints=websecure
+      - traefik.http.routers.auth.tls=true
+      - traefik.http.routers.auth.middlewares=secure-headers@file
+      - traefik.http.services.auth.loadbalancer.server.port=9000
+      # вход и регистрация: отдельный маршрут с БОЛЕЕ ВЫСОКИМ приоритетом и строгим лимитом
+      - traefik.http.routers.auth-login.rule=Host(`auth.${SIRIUS_DOMAIN:-sirius.test}`) && (Path(`/login`) || PathPrefix(`/api/auth`))
+      - traefik.http.routers.auth-login.priority=100
+      - traefik.http.routers.auth-login.entrypoints=websecure
+      - traefik.http.routers.auth-login.tls=true
+      - traefik.http.routers.auth-login.middlewares=ratelimit-auth@file,secure-headers@file
+      - traefik.http.routers.auth-login.service=auth
+
+  mailpit:
+    labels:                                            # веб-интерфейс Mailpit без SSH-туннеля, под паролем
+      - traefik.enable=true
+      - traefik.http.routers.mail.rule=Host(`mail.${SIRIUS_DOMAIN:-sirius.test}`)
+      - traefik.http.routers.mail.entrypoints=websecure
+      - traefik.http.routers.mail.tls=true
+      - traefik.http.routers.mail.middlewares=admin-auth@file
+      - traefik.http.services.mail.loadbalancer.server.port=8025
+
+  rabbitmq:
+    labels:                                            # веб-интерфейс RabbitMQ под паролем
+      - traefik.enable=true
+      - traefik.http.routers.rabbit.rule=Host(`rabbit.${SIRIUS_DOMAIN:-sirius.test}`)
+      - traefik.http.routers.rabbit.entrypoints=websecure
+      - traefik.http.routers.rabbit.tls=true
+      - traefik.http.routers.rabbit.middlewares=admin-auth@file
+      - traefik.http.services.rabbit.loadbalancer.server.port=15672
+
+networks:
+  socket:
+    internal: true                                     # изолированная сеть Traefik <-> прокси Docker

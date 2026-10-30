@@ -1,0 +1,30 @@
+# Статическая конфигурация Traefik: читается один раз при старте.
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https                    # любой HTTP-запрос перенаправляется на HTTPS
+  websecure:
+    address: ":443"
+
+providers:
+  docker:
+    endpoint: tcp://docker-socket-ro:2375  # к Docker - через прокси ТОЛЬКО ДЛЯ ЧТЕНИЯ, а не напрямую к сокету
+    exposedByDefault: false                # контейнер публикуется ТОЛЬКО если у него traefik.enable=true
+  file:
+    filename: /etc/traefik/dynamic.yml     # сертификаты, общие middleware
+    watch: true                            # перечитывать при изменении файла
+
+api:
+  dashboard: true                          # веб-панель (закрыта паролем, см. dynamic.yml)
+
+ping: {}                                   # адрес /ping для проверки здоровья самого Traefik
+
+log:
+  level: INFO
+accessLog: {}                              # журнал каждого запроса
+
+# Метрики и трассировку добавим в главе 11.

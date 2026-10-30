@@ -1,0 +1,30 @@
+# Динамическая конфигурация (файловый провайдер): сертификаты, параметры TLS, общие middleware.
+
+tls:
+  certificates:
+    - certFile: /certs/local.pem
+      keyFile: /certs/local-key.pem
+  options:
+    default:
+      minVersion: VersionTLS12             # старые протоколы (TLS 1.0/1.1) отключены
+
+http:
+  middlewares:
+    secure-headers:
+      headers:
+        stsSeconds: 300                    # HSTS: браузер 5 минут ходит на этот адрес только по HTTPS (в боевой среде 31536000 = год)
+        stsIncludeSubdomains: true
+        contentTypeNosniff: true           # не угадывать тип содержимого
+        frameDeny: true                    # запрет встраивать страницу во фрейм (защита от clickjacking)
+    ratelimit-api:
+      rateLimit:
+        average: 50                        # в среднем 50 запросов в секунду на один адрес клиента
+        burst: 100                         # кратковременный всплеск до 100
+    ratelimit-auth:
+      rateLimit:
+        average: 5                         # строже для входа и регистрации (защита от перебора паролей)
+        burst: 10
+    admin-auth:
+      basicAuth:
+        users:
+          - "admin:$apr1$A0nmBqdh$NqsFzYROeSGfPQFYcVsHE1"                  # логин admin; хеш создан командой: openssl passwd -apr1 'пароль'
